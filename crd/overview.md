@@ -23,7 +23,7 @@ ui should be a simple text user interface to easly manage USB devices.
 - i want a quick action to mount on default dirs.
 - i want a action to generate fstab automount line just to copy paste.
 - should handle umount too.
-- mount should allow write on devices so use `-o umask=000` or a better/secure option to allow it
+- mount should allow write on devices so use `-o uid=<user>,gid=<group>` (more secure than umask=000)
 - request sudo password on the fly to allow admin operation like mount.
   - do not store password on any var, ensure we drop that password after use it.
-
+- password is entered via a modal screen UI (not terminal getpass)
