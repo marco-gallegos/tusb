@@ -4,6 +4,17 @@ version = "0.1.0"
 description = "TUI for managing USB devices on Linux"
 readme = "README.md"
 requires-python = ">=3.14"
+license = { text = "GPL-3.0-or-later" }
+authors = [
+    { name = "Your Name", email = "your.email@example.com" }
+]
+keywords = ["linux", "usb", "mount", "tui", "device-manager"]
+classifiers = [
+    "Operating System :: POSIX :: Linux",
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: System :: Filesystems",
+]
 dependencies = [
     "textual>=8.0.0",
     "pydantic>=2.0.0",

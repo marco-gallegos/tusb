@@ -6,7 +6,8 @@ from typing import Any
 
 from textual.app import App, ComposeResult
 from textual.binding import Binding
-from textual.widgets import DataTable, Static
+from textual.screen import ModalScreen
+from textual.widgets import Button, DataTable, Input, Static
 
 from tusb.config import Config
 from tusb.devices import mount_device, scan_devices, unmount_device
@@ -102,15 +103,17 @@ class TusbApp(App):
                     self.call_from_thread(self._update_ui)
                 elif action == "mount":
                     device = request.get("device")
+                    password = request.get("password")
                     if device:
-                        success, msg = mount_device(device, self.config.mount_dir)
+                        success, msg = mount_device(device, self.config.mount_dir, password)
                         self.call_from_thread(self._set_status, msg)
                         if success:
                             self._refresh_devices()
                 elif action == "unmount":
                     device = request.get("device")
+                    password = request.get("password")
                     if device:
-                        success, msg = unmount_device(device)
+                        success, msg = unmount_device(device, password)
                         self.call_from_thread(self._set_status, msg)
                         if success:
                             self._refresh_devices()
@@ -171,7 +174,7 @@ FSType:  {device.fstype or "-"}"""
         if self.selected_device.is_mounted:
             self._set_status("Device already mounted")
             return
-        self.data_queue.put({"action": "mount", "device": self.selected_device})
+        self._prompt_password("mount")
 
     def action_unmount(self) -> None:
         if self.selected_device is None:
@@ -180,7 +183,22 @@ FSType:  {device.fstype or "-"}"""
         if not self.selected_device.is_mounted:
             self._set_status("Device not mounted")
             return
-        self.data_queue.put({"action": "unmount", "device": self.selected_device})
+        self._prompt_password("unmount")
+
+    def _prompt_password(self, action: str) -> None:
+        self._set_status(f"Enter sudo password for {action}...")
+
+        def on_password_submit(password: str) -> None:
+            if action == "mount":
+                self.data_queue.put(
+                    {"action": "mount", "device": self.selected_device, "password": password}
+                )
+            elif action == "unmount":
+                self.data_queue.put(
+                    {"action": "unmount", "device": self.selected_device, "password": password}
+                )
+
+        self.push_screen(PasswordInput(on_password_submit))
 
     def action_fstab(self) -> None:
         if self.selected_device is None:
@@ -198,3 +216,49 @@ FSType:  {device.fstype or "-"}"""
         self.running = False
         self.data_queue.put(None)
         self.exit()
+
+
+class PasswordInput(ModalScreen):
+    def __init__(self, on_submit: callable) -> None:
+        super().__init__()
+        self.on_submit = on_submit
+
+    CSS = """
+    PasswordInput {
+        align: center middle;
+    }
+    #prompt {
+        margin-bottom: 1;
+    }
+    #container {
+        width: 40;
+    }
+    """
+
+    BINDINGS = [
+        Binding("escape", "cancel", "Cancel"),
+        Binding("enter", "submit", "Submit"),
+    ]
+
+    def compose(self) -> ComposeResult:
+        with Static(id="container"):
+            yield Static("Enter sudo password:", id="prompt")
+            yield Input(placeholder="Password", password=True, id="password-input")
+            yield Button("Submit", variant="primary", id="submit-btn")
+
+    def on_mount(self) -> None:
+        input_widget = self.query_one("#password-input", Input)
+        input_widget.focus()
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        if event.button.id == "submit-btn":
+            self.action_submit()
+
+    def action_submit(self) -> None:
+        input_widget = self.query_one("#password-input", Input)
+        password = input_widget.value
+        self.app.pop_screen()
+        self.on_submit(password)
+
+    def action_cancel(self) -> None:
+        self.app.pop_screen()
