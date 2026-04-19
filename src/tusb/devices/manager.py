@@ -4,7 +4,7 @@ import os
 import subprocess
 from pathlib import Path
 
-from tusb.models import Device
+from tusb.models import Device, FormatType
 
 
 def _get_mount_options(uid: int | None = None, gid: int | None = None) -> str:
@@ -91,3 +91,60 @@ def unmount_device(device: Device, password: str) -> tuple[bool, str]:
         return False, "umount command not found"
     except Exception as e:
         return False, f"Unmount error: {e}"
+
+
+def format_device(device: Device, fs_type: FormatType, label: str | None, password: str) -> tuple[bool, str]:
+    """Format a partition with the specified filesystem."""
+    if not device.is_partition:
+        return False, "Can only format partitions, not whole disks"
+
+    if fs_type == FormatType.KEEP:
+        return False, "Select a filesystem type to format"
+
+    try:
+        device_path = f"/dev/{device.name}"
+        cmd = _build_format_cmd(device_path, fs_type, label)
+
+        result = subprocess.run(
+            ["sudo", "-S"] + cmd,
+            input=f"{password}\n",
+            capture_output=True,
+            text=True,
+        )
+
+        if result.returncode != 0:
+            return False, f"Format failed: {result.stderr.strip() or result.stdout.strip()}"
+
+        return True, f"Formatted {device.name} as {fs_type.value}"
+    except FileNotFoundError:
+        return False, f"mkfs.{fs_type.value} not found. Install corresponding package."
+    except Exception as e:
+        return False, f"Format error: {e}"
+
+
+def _build_format_cmd(device_path: str, fs_type: FormatType, label: str | None) -> list[str]:
+    """Build the format command based on filesystem type."""
+    if fs_type == FormatType.FAT32:
+        cmd = ["mkfs.fat", "-F", "32"]
+        if label:
+            cmd.extend(["-n", label[:11]])
+        cmd.append(device_path)
+    elif fs_type == FormatType.EXFAT:
+        cmd = ["mkfs.exfat"]
+        if label:
+            cmd.extend(["-n", label])
+        cmd.append(device_path)
+    elif fs_type == FormatType.NTFS:
+        cmd = ["mkfs.ntfs"]
+        if label:
+            cmd.extend(["--label", label[:128]])
+        cmd.append(device_path)
+    elif fs_type == FormatType.EXT4:
+        cmd = ["mkfs.ext4"]
+        if label:
+            cmd.extend(["-L", label[:16]])
+        cmd.append(device_path)
+    else:
+        cmd = [f"mkfs.{fs_type.value}", device_path]
+
+    return cmd

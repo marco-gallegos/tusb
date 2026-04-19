@@ -46,6 +46,7 @@ def _extract_partitions(block: dict) -> list[Device]:
                 label=block.get("label"),
                 uuid=block.get("uuid"),
                 parttype=block.get("parttype"),
+                is_partition=True,
             )
         )
     elif block_type == "disk" and "children" in block:

@@ -19,6 +19,7 @@ TUI for managing USB devices on Linux.
 - Mount options configuration
 - Multiple mount points per device
 - Device filtering by type
+- Partition resize (shrink/expand)
 
 ## Installation
 

@@ -27,3 +27,10 @@ ui should be a simple text user interface to easly manage USB devices.
 - request sudo password on the fly to allow admin operation like mount.
   - do not store password on any var, ensure we drop that password after use it.
 - password is entered via a modal screen UI (not terminal getpass)
+- should format devices (fat32, exfat, ntfs, ext4)
+- format only works on partitions, not whole disks
+- format preserves current partition size
+- format should ask confirmation by typing "yes"
+- format should allow optional label
+- show loading indicator during format
+- partition resize (future - shrink/expand)

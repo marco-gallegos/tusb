@@ -35,6 +35,7 @@ uv sync                    # Install dependencies
 - `M` - Mount selected device (opens password modal)
 - `U` - Unmount selected device (opens password modal)
 - `F` - Generate fstab line (display for copy)
+- `Alt+F` - Format selected partition (opens format modal)
 - `R` - Manual refresh device list
 - `Q` - Quit
 
@@ -63,6 +64,12 @@ uv sync                    # Install dependencies
 | Sudo password on-the-fly | 27-29 | ✅ Implemented (ModalScreen + sudo -S) |
 | pypi-ready package | 14 | ✅ Updated (license, classifiers) |
 | LICENSE file | - | ✅ Added (GPLv3 full text) |
+| Format partitions | new | ✅ Implemented (fat32, exfat, ntfs, ext4) |
+| Format confirmation | new | ✅ Implemented (type "yes") |
+| Partition-only format | new | ✅ (not whole disks) |
+| Keep partition size | new | ✅ (no resize on format) |
+| Optional label | new | ✅ Implemented |
+| Loading indicator | new | ✅ Implemented (disable table) |
 
 ## Important Notes
 

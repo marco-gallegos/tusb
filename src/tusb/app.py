@@ -11,8 +11,8 @@ from textual.widgets import Button, DataTable, Input, Static
 
 from tusb import get_version
 from tusb.config import Config
-from tusb.devices import mount_device, scan_devices, unmount_device
-from tusb.models import Device, DeviceList
+from tusb.devices import format_device, mount_device, scan_devices, unmount_device
+from tusb.models import Device, DeviceList, FormatType
 from tusb.utils import generate_fstab_line
 
 
@@ -47,11 +47,12 @@ class TusbApp(App):
     """
 
     BINDINGS = [
-        Binding("m", "mount", "Mount"),
-        Binding("u", "unmount", "Unmount"),
-        Binding("f", "fstab", "Fstab"),
-        Binding("r", "refresh", "Refresh"),
-        Binding("q", "quit", "Quit"),
+        Binding("M", "mount", "Mount", priority=True),
+        Binding("U", "unmount", "Unmount", priority=True),
+        Binding("F", "fstab", "Fstab", priority=True),
+        Binding("D", "format", "Format", priority=True),
+        Binding("R", "refresh", "Refresh", priority=True),
+        Binding("Q", "quit", "Quit", priority=True),
     ]
 
     def __init__(self, config: Config) -> None:
@@ -66,13 +67,14 @@ class TusbApp(App):
         self.table: DataTable | None = None
         self.details: Static | None = None
         self.status: Static | None = None
+        self.formatting: bool = False
 
     def compose(self) -> ComposeResult:
         yield Static(f"tusb v{get_version()} - USB Device Manager", id="title")
         yield DataTable(id="device-table")
         yield Static("Select a device to see details", id="device-details")
         yield Static(
-            "Press M to mount, U to unmount, F for fstab, R to refresh, Q to quit", id="status-bar"
+            "Press M to mount, U to unmount, F for fstab, D to format, R to refresh, Q to quit", id="status-bar"
         )
 
     def on_mount(self) -> None:
@@ -118,6 +120,18 @@ class TusbApp(App):
                         self.call_from_thread(self._set_status, msg)
                         if success:
                             self._refresh_devices()
+                elif action == "format":
+                    device = request.get("device")
+                    fs_type = request.get("fs_type")
+                    label = request.get("label")
+                    password = request.get("password")
+                    self.call_from_thread(self._set_formatting, True)
+                    if device and fs_type:
+                        success, msg = format_device(device, fs_type, label, password)
+                        self.call_from_thread(self._set_status, msg)
+                        if success:
+                            self._refresh_devices()
+                    self.call_from_thread(self._set_formatting, False)
             except queue.Empty:
                 continue
             except Exception as e:
@@ -212,6 +226,50 @@ FSType:  {device.fstype or "-"}"""
     def action_refresh(self) -> None:
         self._refresh_devices()
         self._set_status("Refreshing...")
+
+    def action_format(self) -> None:
+        if self.formatting:
+            self._set_status("Already formatting...")
+            return
+        if self.selected_device is None:
+            self._set_status("No device selected")
+            return
+        if not self.selected_device.is_partition:
+            self._set_status("Can only format partitions, not whole disks")
+            return
+        if self.selected_device.is_mounted:
+            self._set_status("Unmount device before formatting")
+            return
+
+        def on_format_submit(fs_type: FormatType, label: str | None) -> None:
+            self._prompt_password_for_format(fs_type, label)
+
+        from tusb.ui.screens import FormatModal
+
+        self.push_screen(FormatModal(self.selected_device, on_format_submit))
+
+    def _prompt_password_for_format(self, fs_type: FormatType, label: str | None) -> None:
+        self._set_status("Formatting... (enter sudo password)")
+
+        def on_password_submit(password: str) -> None:
+            self.data_queue.put(
+                {
+                    "action": "format",
+                    "device": self.selected_device,
+                    "fs_type": fs_type,
+                    "label": label,
+                    "password": password,
+                }
+            )
+
+        self.push_screen(PasswordInput(on_password_submit))
+
+    def _set_formatting(self, is_formatting: bool) -> None:
+        self.formatting = is_formatting
+        if is_formatting:
+            self._set_status("Formatting... please wait")
+        if self.table:
+            self.table.disabled = is_formatting
 
     def action_quit(self) -> None:
         self.running = False

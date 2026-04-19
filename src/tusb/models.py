@@ -1,6 +1,18 @@
 """Pydantic data models for tusb."""
 
+from enum import StrEnum
+
 from pydantic import BaseModel, Field
+
+
+class FormatType(StrEnum):
+    """Filesystem types for formatting."""
+
+    KEEP = "keep"
+    FAT32 = "fat32"
+    EXFAT = "exfat"
+    NTFS = "ntfs"
+    EXT4 = "ext4"
 
 
 class Device(BaseModel):
@@ -13,6 +25,7 @@ class Device(BaseModel):
     label: str | None = Field(default=None, description="Partition label")
     uuid: str | None = Field(default=None, description="Partition UUID")
     parttype: str | None = Field(default=None, description="Partition type")
+    is_partition: bool = Field(default=False, description="Whether this is a partition (not whole disk)")
 
     @property
     def is_mounted(self) -> bool:
