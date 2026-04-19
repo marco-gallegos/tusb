@@ -9,6 +9,7 @@ from textual.binding import Binding
 from textual.screen import ModalScreen
 from textual.widgets import Button, DataTable, Input, Static
 
+from tusb import get_version
 from tusb.config import Config
 from tusb.devices import mount_device, scan_devices, unmount_device
 from tusb.models import Device, DeviceList
@@ -67,7 +68,7 @@ class TusbApp(App):
         self.status: Static | None = None
 
     def compose(self) -> ComposeResult:
-        yield Static("tusb - USB Device Manager", id="title")
+        yield Static(f"tusb v{get_version()} - USB Device Manager", id="title")
         yield DataTable(id="device-table")
         yield Static("Select a device to see details", id="device-details")
         yield Static(
