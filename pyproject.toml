@@ -17,13 +17,14 @@ dependencies = ["textual>=8.0.0", "pydantic>=2.0.0", "click>=8.0.0"]
 
 [project.scripts]
 tusb = "tusb.__main__:main"
+tusb-story = "tusb.storybook.__main__:main"
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [dependency-groups]
-dev = ["pytest>=8.0.0", "ruff>=0.4.0"]
+dev = ["pytest>=8.0.0", "ruff>=0.4.0", "textual-dev>=1.0.0"]
 
 [tool.ruff]
 line-length = 100
